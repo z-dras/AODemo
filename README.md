@@ -2,6 +2,11 @@
 
 This lays out the base functionality for an interactive audio book platform
 
-to run the demo `python3 buildbooks.py`
+### Setup
 
-Make sure to `pip install` the dependencies including pyAudio and playsound
+`pip install requirements.txt`
+
+### Run
+
+`python3 buildbooks.py`
+
