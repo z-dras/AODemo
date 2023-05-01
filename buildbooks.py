@@ -1,8 +1,12 @@
 from gtts import gTTS
 import speech_recognition as sr
+import json
 from pathlib import Path
 from playsound import playsound
+import sys
 import os
+
+
 r = sr.Recognizer()
 class AudioBook:
    start_segment = 0 
@@ -19,6 +23,8 @@ class AudioBook:
          current = self.segments[current_id]
          playsound(f"{current.mp3_content}")
          while(True):
+            if current.next_id_table == {}:
+               break
             playsound(f"{current.mp3_prompt}")
             with sr.Microphone() as source:
                 # read the audio data from the default microphone
@@ -29,11 +35,14 @@ class AudioBook:
                 text = r.recognize_google(audio_data, language='en', show_all=True)
                 print(text)
                 if text != []:
-                    # TODO loop over these and try them all before giving up
-                    text = text['alternative'][0]['transcript']
-                    if text in current.next_id_table:
-                        current_id = int(current.next_id_table[text])
-                        print(current_id)
+                    found = False
+                    for option in text['alternative']:
+                     text = option['transcript']
+                     if text in current.next_id_table:
+                           current_id = int(current.next_id_table[text])
+                           found = True
+                           break
+                     if found:
                         break
          
 class AudioBookSegment:
@@ -52,30 +61,55 @@ class AudioBookSegment:
       self.content = c
       self.mp3_content = f"content_{self.id}.mp3" 
       self.mp3_prompt = f"prompt_{self.id}.mp3"
+      # TODO accept more languages!!!
       if not Path(self.mp3_content).is_file():
         speech = gTTS(text=self.content, lang='en', slow=False)
-        speech.save(f"content_{self.id}.mp3")
-      if not Path(self.mp3_prompt).is_file():
+        speech.save(f"{name}/content_{self.id}.mp3")
+      if not Path(self.mp3_prompt).is_file() and self.prompt != "":
         prompt = gTTS(text=self.prompt, lang='en', slow=False)
-        prompt.save(f"prompt_{self.id}.mp3")
+        prompt.save(f"{name}/prompt_{self.id}.mp3")
+
+name = ""
+try:
+   name = sys.argv[1]
+except:
+   print("Missing required argument audio book name. See README for more details")
+   exit(1)
+
+id = 0
+nodes = []
+while(True):
+   try:
+      with open(f'{name}/content-{id}.txt', 'r') as f:
+        lines = f.readlines()
+        content = ""
+        for line in lines:
+           content += " " + line
+   except FileNotFoundError:
+      break
+   try:
+      with open(f'{name}/mapping-{id}.txt', 'r') as f:
+        line = f.readline()
+        mapping = json.loads(line)
+   except FileNotFoundError:
+      mapping = {}
+
+   try:
+      with open(f'{name}/prompt-{id}.txt', 'r') as f:
+        lines = f.readlines()
+        prompt = ""
+        for line in lines:
+           prompt += " " + line
+   except FileNotFoundError:
+      prompt = ""
+   
+   print(id, mapping, content, prompt)
+   nodes.append(AudioBookSegment(id, mapping, content, prompt))
+   id += 1
 
 
-startSeg = AudioBookSegment(
-                            0, 
-                            {"1": "1", "2":"2"},
-                            "You arrive at a fork in the road. On the right you see sparkling sun and blue sky over a well trodden dirt road. The left fork is truly the road less traveled, it has green overgrowth that winds and bends and casts a dark shadow over the path.",
-                            "Which path would you like to take: 1) the right path 2) the left path")
-oneSeg = AudioBookSegment(1, 
-                            {"1": "-1", "2":"-1"},
-                            "You continue down the sunny path, admiring the glowing  natural beauty all around. Eventually you come to a clearing with a large log cabin in the middle.",
-                            "Which path would you like to take: 1) the right path 2) the left path")
-twoSeg = AudioBookSegment(2,
-                          {"1": "-1", "2":"-1"},
-                          "You weave down the path less traveled, being careful not to trip on any of the large tree roots that line the path. Suddenly you hear a loud bang.",
-                          "Would you like to 1) investigate the source of the noise or 2) run the other direction.")
-
-testBook = AudioBook("Test", 0, [startSeg, oneSeg, twoSeg])
-testBook.play_book()
+book = AudioBook(name, 0, nodes)
+book.play_book()
    
 
 
