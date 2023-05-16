@@ -8,7 +8,7 @@ This lays out the base functionality for an interactive media platform, includin
 
 ### Usage
 
-`python3` ao.py <mode> <name>`
+`python3 ao.py <mode> <name>`
 
 mode should be `book` or `b` to run the demo in audiobook mode
 mode should be `trivia` or `t` to run the demo in trivia mode
